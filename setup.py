@@ -24,7 +24,7 @@ setup(
         'Intended Audience :: Developers',
         'Natural Language :: English',
         'Operating System :: Microsoft :: Windows',
-        'Operating System :: Posix :: Linux',
+        'Operating System :: POSIX :: Linux',
         'Operating System :: MacOS',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
