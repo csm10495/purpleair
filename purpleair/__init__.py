@@ -5,6 +5,7 @@ from json import JSONDecodeError
 from typing import Optional, List, Union
 from requests import HTTPError, Session, Response
 from logging import getLogger
+from cachetools import TTLCache, cachedmethod
 
 logger = getLogger(__file__)
 
@@ -13,13 +14,15 @@ V1_API_ENDPOINT = "https://api.purpleair.com/v1/"
 
 class PurpleAir:
     """
-    An object to help work with the Purple Air V1 APIs. See https://api.purpleair.com for API info."""
+    An object to help work with the Purple Air V1 APIs. See https://api.purpleair.com for API info.
+    """
 
     def __init__(
         self,
         read_api_key: str,
         write_api_key: Optional[str] = None,
         verify_api_keys: bool = True,
+        ttl: float = 60.0,
     ):
         """
         Initiates a PurpleAir object which will be used to work with the purpleair.com api
@@ -28,9 +31,16 @@ class PurpleAir:
         If you provide a write_api_key, writes may also be available
 
         If verify_api_keys is True, will verify that the given api keys are valid by checking them via the API.
+
+        The ttl is the cache time for GET calls. To minimize api load, these requests will cache the result locally
+        and only allow calling the API after the ttl elapses (otherwise cached responses are returned)
+
         """
         self.read_api_key = read_api_key
         self.write_api_key = write_api_key
+        self.ttl = ttl
+
+        self._cache = TTLCache(256, ttl=self.ttl)
 
         self._session = Session()
 
@@ -96,6 +106,7 @@ class PurpleAir:
 
         return response
 
+    @cachedmethod(lambda self: self._cache)
     def check_key(self, api_key: str) -> dict:
         """
         Calls the /keys API to get info for the given key
@@ -104,6 +115,7 @@ class PurpleAir:
             url=V1_API_ENDPOINT + "keys", method="GET", api_key=api_key
         ).json()
 
+    @cachedmethod(lambda self: self._cache)
     def get_sensor_data(
         self,
         sensor_index: int,
@@ -130,6 +142,7 @@ class PurpleAir:
             ),
         ).json()
 
+    @cachedmethod(lambda self: self._cache)
     def get_sensors_data(
         self,
         fields: Union[List[str], str],

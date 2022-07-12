@@ -30,6 +30,6 @@ setup(
         'Programming Language :: Python :: 3',
     ],
     include_package_data = True,
-    install_requires=['requests'],
+    install_requires=['requests', 'cachetools'],
     entry_points={},
 )
