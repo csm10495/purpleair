@@ -8,7 +8,7 @@ This is provided via the MIT License.
 
 # APIs
 
-Currently The following APIs are implemented:
+Currently the following APIs are implemented:
 
 - Check an API Key
   - `check_key()`
@@ -16,6 +16,10 @@ Currently The following APIs are implemented:
   - `get_sensor_data()`
 - Check Sensors Data
   - `get_sensors_data()`
+
+Currently the following APIs are in alpha and not tested:
+- Check Sensor History
+  - `get_sensor_history()`
 
 See the docstrings and API docs for information on these functions.
 
@@ -39,6 +43,8 @@ Send an email to contact@purpleair.com requesting API keys.
 In [1]: from purpleair import PurpleAir
 
 In [2]: p = PurpleAir('READ_KEY_HERE')
+
+# See help(p.get_sensor_data) for param names, and see https://api.purpleair.com for API info.
 
 In [3]: p.get_sensor_data('99999')
 Out[3]:
@@ -170,3 +176,37 @@ Out[3]:
    'pm2.5_1week': 3.0,
    'time_stamp': 1657577216}}}
 ```
+
+## Getting Multiple Sensors Data via location_id and modified_since
+
+See https://api.purpleair.com for what the parameters mean and how they're used.
+
+```
+In [1]: from purpleair import PurpleAir
+
+In [2]: p = PurpleAir('READ_KEY_HERE')
+
+# See help(p.get_sensors_data) for param names, and see https://api.purpleair.com for API info.
+
+# Pull temperature/humidity from all sensors that are outside and have been modified today
+# location_type=0 per api docs means outdoor sensors
+# Use modified_since with a datetime corresponding with the first moment of today
+
+In [3]: p.get_sensors_data(fields=('temperature', 'humidity', ), location_type=0, modified_since=datetime(year=datetime.now().year, month=datetime.now().month, day=datetime.now().day))
+Out[3]:
+{'api_version': 'V1.0.11-0.0.40',
+ 'time_stamp': 1663454033,
+ 'data_time_stamp': 1663454012,
+ 'location_type': 0,
+ 'modified_since': 1663428833,
+ 'max_age': 604800,
+ 'firmware_default_version': '7.00',
+ 'fields': ['sensor_index', 'humidity', 'temperature'],
+ 'data': [[131075, 35, 90],
+  [131079, 53, 71],
+  [131077, 35, 78],
+  [131083, 36, 77],
+  [131087, 23, 76],
+  [131085, 12, 85],
+  [131091, 16, 101],
+  ...
