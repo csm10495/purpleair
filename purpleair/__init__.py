@@ -70,6 +70,7 @@ class PurpleAir:
         params: Optional[dict] = None,
         data: Optional[dict] = None,
         api_key: Optional[str] = None,
+        assume_json: bool = True,
     ) -> Response:
         """
         Performs the given request with the given url. Will use the corresponding API key if this is a READ operation vs a WRITE operation.
@@ -97,13 +98,14 @@ class PurpleAir:
             logger.warning(f"Request failed: {url}\nResponse:{response.json()}")
             raise
 
-        try:
-            response.json()
-        except JSONDecodeError:
-            logger.warning(
-                f"The request: {url} did not yield json data. \nContent:{response.content}"
-            )
-            raise
+        if assume_json:
+            try:
+                response.json()
+            except JSONDecodeError:
+                logger.warning(
+                    f"The request: {url} did not yield json data. \nContent:{response.content}"
+                )
+                raise
 
         return response
 
@@ -186,7 +188,7 @@ class PurpleAir:
         start_timestamp: Optional[Union[int, datetime, timedelta]] = None,
         end_timestamp: Optional[Union[int, datetime, timedelta]] = None,
         average: Optional[Union[int, timedelta]] = None,
-    ):
+    ) -> dict:
         """
         Calls /sensors/:sensor_index/history to get data history for the given sensor. You give either a set of fields to retrieve
         or a comma delim'd string of those fields. Use the other parameters to shrink down the amount of data returned.
@@ -206,8 +208,6 @@ class PurpleAir:
         See the API docs for information on the parameters
 
         Note that you may need to request access to this API from Purple Air for your key to work (otherwise you'd get a 403 with ApiDisabledError)
-
-        This function is currently in alpha and not fully tested.. ( I'm waiting to get my API key approved to test it more :) )
         """
         return self._request(
             url=V1_API_ENDPOINT + f"sensors/{sensor_index}/history",
@@ -219,8 +219,52 @@ class PurpleAir:
                 start_timestamp=self._to_utc_timestamp(start_timestamp),
                 end_timestamp=self._to_utc_timestamp(end_timestamp),
                 average=average,
-            ),
+            )
         ).json()
+
+
+    @cachedmethod(lambda self: self._cache)
+    def get_sensor_history_csv(
+        self,
+        sensor_index: int,
+        fields: Union[Set[str], str],
+        start_timestamp: Optional[Union[int, datetime, timedelta]] = None,
+        end_timestamp: Optional[Union[int, datetime, timedelta]] = None,
+        average: Optional[Union[int, timedelta]] = None,
+    ) -> str:
+        """
+        Calls /sensors/:sensor_index/history/csv to get data history as csv for the given sensor. You give either a set of fields to retrieve
+        or a comma delim'd string of those fields. Use the other parameters to shrink down the amount of data returned.
+
+        start_timestamp/end_timestamp allows for any of the following:
+            None - (nothing specified for this param)
+            int - Directly matches the api docs for start_timestamp/end_timestamp.. (if you give a float, we'll coerce it to int)
+            datetime - A specific tz-naive datetime (in utc time) to be coerced to an int to be sent as start_timestamp/end_timestamp per the api docs
+            timedelta - Used to subtract an amount of time from utcnow then coerced to an int to be sent as start_timestamp/end_timestamp
+                per the api docs
+
+        average allows for any of the following:
+            None - (nothing specified for this param)
+            int - Directly matches the api docs for average.. (if you give a float, we'll coerce it to int)
+            timedelta - Will be coerced to total seconds and then sent as average per the api docs
+
+        See the API docs for information on the parameters
+
+        Note that you may need to request access to this API from Purple Air for your key to work (otherwise you'd get a 403 with ApiDisabledError)
+        Also Note: This returns a string of CSV data on success (not a dict of JSON like other APIs)
+        """
+        return self._request(
+            url=V1_API_ENDPOINT + f"sensors/{sensor_index}/history/csv",
+            method="GET",
+            params=dict(
+                sensor_index=sensor_index,
+                fields=self._to_fields_string(fields),
+                start_timestamp=self._to_utc_timestamp(start_timestamp),
+                end_timestamp=self._to_utc_timestamp(end_timestamp),
+                average=average,
+            ),
+            assume_json=False,
+        ).text
 
     @cachedmethod(lambda self: self._cache)
     def get_sensors_data(
